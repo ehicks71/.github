@@ -1,2 +1,3 @@
-# github-workflow-php
-Github Workflow for PHP applications
+# Github Workflow for PHP
+
+Use this Github Workflow for PHP repositories.

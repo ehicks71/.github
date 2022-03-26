@@ -1,44 +1,75 @@
-name: PHP Composer / Code Climate Workflow
+name: Reusable PHP Workflow
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  workflow_call:
+    inputs:
+      phpVersion:
+        required: true
+        type: string
+    secrets:
+      composerAuth:
+        required: true
+#       codeClimateId:
+#         required: true
+#       securityToken:
+#         required: true
 
 jobs:
-  build:
-
-    runs-on: ubuntu-18.04
+  setup:
+    name: Composer Setup
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: ehicks71/.github/.github/actions/php-cache-restore@master
+        id: cache-composer
+        with:
+          php-version: ${{ inputs.phpVersion }}
 
-    - name: Setup PHP with Xdebug 2.x
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '7.4'
-        coverage: xdebug2
+      - name: Validate composer.json and composer.lock
+        run: composer validate
 
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v2
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
+      - name: Install Dependencies
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.composerAuth}}"} }'
+        run: composer install
+        if: steps.cache-composer.outputs.cache-hit != 'true'
 
-    - name: Install Dependencies
-      env:
-        COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }'
-      run: |
-        composer install
-    
-    - name: Code Climate Coverage Action
-      uses: paambaati/codeclimate-action@v3.0.0
-      env:
-        CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
-      with:
-        coverageCommand: vendor/bin/phpunit --coverage-clover clover.xml
-        debug: true
+#   testing:
+#     name: Testing and Code Coverage (Code Climate)
+#     needs: setup
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - uses: actions/checkout@v2
+#       - uses: ehicks71/.github/.github/actions/php-cache-restore@master
+#         id: cache-composer
+#         with:
+#           php-version: ${{ inputs.phpVersion }}
+
+#       - name: Code Climate Coverage Action
+#         uses: paambaati/codeclimate-action@v3.0.0
+#         env:
+#           CC_TEST_REPORTER_ID: ${{secrets.codeClimateId}}
+#         with:
+#           coverageCommand: vendor/bin/phpunit --coverage-clover clover.xml
+#           debug: true
+
+#   security:
+#     name: Security (Snyk)
+#     needs: setup
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - uses: actions/checkout@v2
+#       - uses: ehicks71/.github/.github/actions/php-cache-restore@master
+#         id: cache-composer
+#         with:
+#           php-version: ${{ inputs.phpVersion }}
+
+#       - name: Run Snyk to check for vulnerabilities
+#         uses: snyk/actions/php@master
+#         env:
+#           SNYK_TOKEN: ${{ secrets.securityToken }}
+#         with:
+#           args: --severity-threshold=low --all-projects

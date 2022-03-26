@@ -1,3 +1,3 @@
-# Github Workflow for PHP
+# Github Workflows and Actions
 
-Use this Github Workflow for PHP repositories.
+Workflows and actions used in managing my repositories.
